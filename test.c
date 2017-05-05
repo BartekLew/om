@@ -58,21 +58,32 @@ void get_no_exist( int fd, c_Str file_name ) {
         printf( "wrong error, should be no_exist, is:\n'%.*s'<<<<<<\n'%.*s'\n", pipe_bytes, pipe_content, text_len, text );
 }
 
+bool fd_void( int fd ) {
+    return poll( (struct pollfd[]){{
+            .fd = fd, .events = POLLIN
+        }}, 1, 0 ) < 1;
+}
+
+void assert_fd_void( int fd ) {
+    if( !fd_void( fd ) ) {
+        char remainder[1000];
+        size_t size = read( fd, remainder, 1000 );
+        printf( "om-test: excessive error text: %.*s...\n", size, remainder );
+    }
+}
+
 void test_file_content( int error_pipe ) {
     for( unsigned int i = 0; i < N_Test_files; i++ ) 
         on_text_file( Test_files[i], &compare );
+
+    assert_fd_void( error_pipe );
 
     for( unsigned int i = 0; i < N_Non_existent_files; i++ ) {
         on_text_file( Non_existent_files[i], &doesnt_exist );
         get_no_exist( error_pipe, Non_existent_files[i] );
     }
     
-    struct pollfd fds[] = { { .fd = error_pipe, .events = POLLIN } };
-    if( poll( fds, 1, 0 ) > 0 ) {
-        char remainder[1000];
-        read( error_pipe, remainder, 1000 );
-        printf( "om-test: excessive error text: %.*s...\n", 10, remainder );
-    }
+    assert_fd_void( error_pipe );
 }
 
 void redirect_stdout( void (*action)(int fd) ) {
