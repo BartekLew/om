@@ -1,16 +1,24 @@
 #ifndef __HEADER_TEXT
 #define __HEADER_TEXT
 
+typedef const char *c_Str;
+
 typedef struct text{
-    const char *text;
+    c_Str  text;
     size_t len;
-} Text;
+} Txt;
 
-typedef const char *c_str;
+typedef struct context{
+   c_Str file;
+   int   pos;
+} Ctx;
 
-typedef void (*TextHandler)( Text content, c_str file_name );
+typedef void (*TxtHandler)( Txt, Ctx );
+
+
+void on_text_file( c_Str name, TxtHandler handler );
+
+
 extern const char Doesnt_exist_text[];
-
-void on_text_file( c_str name, TextHandler handler, c_str parameter );
 
 #endif

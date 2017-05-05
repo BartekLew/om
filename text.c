@@ -3,7 +3,8 @@
 #include "text.h"
 
 const char Doesnt_exist_text[] = "can't open file: %s.\n";
-void on_text_file( c_str name, TextHandler handler, c_str parameter ) {
+
+void on_text_file( c_Str name, TxtHandler handler ) {
     FILE *handle = fopen( name, "r" );
     if( handle == NULL ) {
         fprintf( stderr, Doesnt_exist_text, name );
@@ -18,7 +19,8 @@ void on_text_file( c_str name, TextHandler handler, c_str parameter ) {
     if( fread( buffer, size, 1, handle ) != 1 ) 
         fprintf( stderr, "error reading file %s.\n", name );
     else
-        handler( (Text){ .len = size, .text = buffer }, parameter );
+        handler( (Txt){ .len = size, .text = buffer },
+                 (Ctx){ .file = name, .pos = 0 } );
     
     fclose(handle);
 }
