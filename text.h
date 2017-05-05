@@ -13,10 +13,13 @@ typedef struct context{
    int   pos;
 } Ctx;
 
-typedef void (*TxtHandler)( Txt, Ctx );
+typedef void (*Handler)( Txt, Ctx );
+typedef struct handler_set{
+    Handler txt, err;
+} Handlers;
 
 
-void on_text_file( c_Str name, TxtHandler handler );
+void on_text_file( c_Str name, Handlers handlers );
 
 
 extern const char Doesnt_exist_text[];

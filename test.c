@@ -37,25 +37,29 @@ void compare( Txt txt, Ctx ctx ) {
     fclose( handle );
 }
 
-void doesnt_exist( Txt input, Ctx ctx ) {
-    if( fopen( ctx.file, "r" ) != NULL ) {
+void no_error( Txt txt, Ctx ctx ) {
+    printf( "om-test: no error expected, but caught %s/%d.\n",
+            ctx.file, ctx.pos
+    );
+}
+
+void doesnt_exist( Txt txt, Ctx ctx ) {
+    if( txt.text != Doesnt_exist_text )
+        printf(
+            "om-test: expected file that doesn't exist, but other error found: '%.*s'.\n",
+            txt.len, txt.text
+        );
+}
+
+void shouldnt_exist( Txt input, Ctx ctx ) {
+    FILE *f;
+    if( ( f = fopen( ctx.file, "r" ) ) != NULL ) {
         printf( "om-test: '%s' file exists, shouldn't!.\n", ctx.file );
+        fclose( f );
 
     } else if( input.len != 0 ) {
         printf( "om-test: '%s' file shouldn't exist, but on_text_file give content!.\n", ctx.file );
     }
-}
-
-void get_no_exist( int fd, c_Str file_name ) {
-    size_t text_len = strlen(Doesnt_exist_text) + strlen(file_name) - 1;
-    char text[text_len];
-    char pipe_content[text_len];
-
-    sprintf( text, Doesnt_exist_text, file_name );
-    size_t pipe_bytes = read( fd, pipe_content, text_len );
-    if( pipe_bytes + 1 != text_len
-        || strncmp( pipe_content, text, pipe_bytes ) != 0 ) 
-        printf( "wrong error, should be no_exist, is:\n'%.*s'<<<<<<\n'%.*s'\n", pipe_bytes, pipe_content, text_len, text );
 }
 
 bool fd_void( int fd ) {
@@ -74,14 +78,14 @@ void assert_fd_void( int fd ) {
 
 void test_file_content( int error_pipe ) {
     for( unsigned int i = 0; i < N_Test_files; i++ ) 
-        on_text_file( Test_files[i], &compare );
+        on_text_file( Test_files[i],
+            (Handlers){ .txt = &compare, .err = &no_error }
+        );
 
-    assert_fd_void( error_pipe );
-
-    for( unsigned int i = 0; i < N_Non_existent_files; i++ ) {
-        on_text_file( Non_existent_files[i], &doesnt_exist );
-        get_no_exist( error_pipe, Non_existent_files[i] );
-    }
+    for( unsigned int i = 0; i < N_Non_existent_files; i++ )
+        on_text_file( Non_existent_files[i],
+            (Handlers){ .txt = &shouldnt_exist, .err=&doesnt_exist }
+        );
     
     assert_fd_void( error_pipe );
 }

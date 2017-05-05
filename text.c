@@ -2,12 +2,18 @@
 #include <stdlib.h>
 #include "text.h"
 
-const char Doesnt_exist_text[] = "can't open file: %s.\n";
+const char Doesnt_exist_text[] = "can't open file";
+#define _Txt(CONST_STR) (Txt) { \
+    .text = CONST_STR, .len = sizeof(CONST_STR) \
+}
 
-void on_text_file( c_Str name, TxtHandler handler ) {
+void on_text_file( c_Str name, Handlers handlers ) {
     FILE *handle = fopen( name, "r" );
     if( handle == NULL ) {
-        fprintf( stderr, Doesnt_exist_text, name );
+        handlers.err(
+           _Txt(Doesnt_exist_text),
+           (Ctx){ .file = name }
+        );
         return;
     }
 
@@ -17,10 +23,15 @@ void on_text_file( c_Str name, TxtHandler handler ) {
 
     char buffer[size];
     if( fread( buffer, size, 1, handle ) != 1 ) 
-        fprintf( stderr, "error reading file %s.\n", name );
+        handlers.err(
+            _Txt( "error reading file.\n" ),
+           (Ctx){ .file =  name }
+        );
     else
-        handler( (Txt){ .len = size, .text = buffer },
-                 (Ctx){ .file = name, .pos = 0 } );
+        handlers.txt(
+            (Txt){ .len = size, .text = buffer },
+            (Ctx){ .file = name, .pos = 0 }
+        );
     
     fclose(handle);
 }
