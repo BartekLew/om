@@ -1,9 +1,6 @@
 #include<stdio.h>
-#include<stdlib.h>
 #include<stdbool.h>
 #include<string.h>
-#include<unistd.h>
-#include<poll.h>
 
 #include "text.h"
 
@@ -62,21 +59,7 @@ void shouldnt_exist( Txt input, Ctx ctx ) {
     }
 }
 
-bool fd_void( int fd ) {
-    return poll( (struct pollfd[]){{
-            .fd = fd, .events = POLLIN
-        }}, 1, 0 ) < 1;
-}
-
-void assert_fd_void( int fd ) {
-    if( !fd_void( fd ) ) {
-        char remainder[1000];
-        size_t size = read( fd, remainder, 1000 );
-        printf( "om-test: excessive error text: %.*s...\n", size, remainder );
-    }
-}
-
-void test_file_content( int error_pipe ) {
+int main( void ) {
     for( unsigned int i = 0; i < N_Test_files; i++ ) 
         on_text_file( Test_files[i],
             (Handlers){ .txt = &compare, .err = &no_error }
@@ -86,23 +69,7 @@ void test_file_content( int error_pipe ) {
         on_text_file( Non_existent_files[i],
             (Handlers){ .txt = &shouldnt_exist, .err=&doesnt_exist }
         );
-    
-    assert_fd_void( error_pipe );
-}
-
-void redirect_stdout( void (*action)(int fd) ) {
-    int fd[2];
-    pipe(fd);
-    dup2(fd[1], 2); // stderr to pipe
-
-    action( fd[0] );
-
-    close(fd[0]);
-    close(fd[1]);
-}
-
-int main( int n_args, char **args ) {
-    redirect_stdout( &test_file_content );
 
     return 0;
 }
+
