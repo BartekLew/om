@@ -59,6 +59,44 @@ void shouldnt_exist( Txt input, Ctx ctx ) {
     }
 }
 
+#define assert( CONDITION ) \
+    if( !(CONDITION) ) { \
+        printf( "om-test: assert fail: '%s' @ %s:%u.\n", \
+            #CONDITION, __FILE__, __LINE__ \
+        ); \
+    }
+
+#define assert_string( A, B ) \
+    assert( (A).len == (B).len ); \
+    if ( strncmp( (A).text, (B).text, (B).len ) != 0 ) { \
+        printf( "om-test: assert '%.*s' != '%.*s'.\n", \
+                (A).len, (A).text, (B).len, (B).text \
+        ); \
+    }
+
+#define assert_source( SELECTION, TXT ) \
+    if( (SELECTION).source.text == NULL \
+        || (SELECTION).source.text < (TXT).text \
+        || (SELECTION).source.text >= (TXT).text + (TXT).len \
+        || (SELECTION).source.text + (SELECTION).source.len > (TXT).text + (TXT).len ) \
+        printf( "om-test: assert source failed: %p/%u !~= %p/%u.\n", \
+            (SELECTION).source.text, (SELECTION).source.len, (TXT).text, (TXT).len \
+        ); \
+
+
+Selection selection_test_case( Txt input, Txt pattern, bool found ) {
+    Selection s = selection( input, pattern );
+    if( found ) {
+        assert_source( s, input );
+        assert_string( selection_text(s), pattern );
+    } else {
+        assert( s.source.text == NULL )
+    }
+
+    return s;
+}
+
+
 int main( void ) {
     for( unsigned int i = 0; i < N_Test_files; i++ ) 
         on_text_file( Test_files[i],
@@ -69,6 +107,18 @@ int main( void ) {
         on_text_file( Non_existent_files[i],
             (Handlers){ .txt = &shouldnt_exist, .err=&doesnt_exist }
         );
+
+    Txt input;
+    Selection s = selection_test_case(
+        input = _Txt( "I want you to get only word 'fooo!' and nothing else, even 'fooo!'…" ),
+        _Txt( "fooo!" ), true
+    );
+    selection_test_case( before(s), _Txt( "fooo!" ), false );
+    s = selection_test_case( after(s), _Txt( "fooo!" ), true );
+    
+    Selection s2 = selection_test_case( input, _Txt( "even 'fooo!'"), true );
+    assert( s2.source.text + s2.start == s.source.text + s.start - 6 );
+    assert( s2.len == s.len + 7 );
 
     return 0;
 }
