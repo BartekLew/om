@@ -10,7 +10,8 @@ void on_text_file( c_Str name, Handlers handlers ) {
     if( handle == NULL ) {
         handlers.err(
            _Txt(Doesnt_exist_text),
-           (Ctx){ .file = name }
+           (Ctx){ .file = name,
+                  .user = handlers.user_data }
         );
         return;
     }
@@ -23,12 +24,14 @@ void on_text_file( c_Str name, Handlers handlers ) {
     if( fread( buffer, size, 1, handle ) != 1 ) 
         handlers.err(
             _Txt( "error reading file.\n" ),
-           (Ctx){ .file =  name }
+           (Ctx){ .file =  name,
+                  .user = handlers.user_data }
         );
     else
         handlers.txt(
             (Txt){ .len = size, .text = buffer },
-            (Ctx){ .file = name, .pos = 0 }
+            (Ctx){ .file = name, .pos = 0,
+                   .user = handlers.user_data }
         );
     
     fclose(handle);
@@ -83,3 +86,25 @@ Txt after( Selection s ) {
         .len = s.source.len - s.start - s.len
     };
 }
+
+void with_subst( Selection s, Txt txt, Handlers handlers ) {
+    if( s.source.text == NULL )
+        handlers.err(
+            _Txt( "substiton on invalid selection" ),
+            (Ctx) { .file = "##", .user = handlers.user_data }
+        );
+
+    char buffer[ s.source.len - s.len + txt.len ];
+    strncpy( buffer, s.source.text, s.start );
+    strncpy( buffer + s.start, txt.text, txt.len );
+    strncpy( buffer + s.start + txt.len,
+             s.source.text + s.start + s.len,
+             s.source.len - s.start - s.len
+    );
+
+    handlers.txt(
+        txt_of( buffer, sizeof(buffer) ),
+        (Ctx){ .user = handlers.user_data }
+    );
+}
+

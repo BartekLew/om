@@ -67,8 +67,8 @@ void shouldnt_exist( Txt input, Ctx ctx ) {
     }
 
 #define assert_string( A, B ) \
-    assert( (A).len == (B).len ); \
-    if ( strncmp( (A).text, (B).text, (B).len ) != 0 ) { \
+    if( (A).len != (B).len \
+        || strncmp( (A).text, (B).text, (B).len ) != 0 ) { \
         printf( "om-test: assert '%.*s' != '%.*s'.\n", \
                 (A).len, (A).text, (B).len, (B).text \
         ); \
@@ -96,6 +96,14 @@ Selection selection_test_case( Txt input, Txt pattern, bool found ) {
     return s;
 }
 
+void compare_to_txt( Txt txt, Ctx ctx ) {
+    assert( txt.text != NULL );
+
+    Txt *user = (Txt*)ctx.user;
+    assert( user != NULL );
+    
+    assert_string( txt, *user );
+}
 
 int main( void ) {
     for( unsigned int i = 0; i < N_Test_files; i++ ) 
@@ -122,6 +130,14 @@ int main( void ) {
 
     selection_test_case( _Txt( "" ), _Txt( "anything" ), false );
     selection_test_case( _Txt( "anything you would like" ), _Txt( "" ), false );
+
+    Txt expected = _Txt( "Hello world!" );
+    s = selection_test_case( _Txt( "Hello what?!" ), _Txt( "what?" ), true );
+    with_subst( s, _Txt( "world" ),
+        (Handlers) { .txt = &compare_to_txt,
+                     .err=&no_error,
+                     .user_data =  &expected }
+    );
 
     return 0;
 }
