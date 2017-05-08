@@ -120,6 +120,9 @@ int main( void ) {
     assert( s2.source.text + s2.start == s.source.text + s.start - 6 );
     assert( s2.len == s.len + 7 );
 
+    selection_test_case( _Txt( "" ), _Txt( "anything" ), false );
+    selection_test_case( _Txt( "anything you would like" ), _Txt( "" ), false );
+
     return 0;
 }
 

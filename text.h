@@ -34,6 +34,8 @@ typedef struct selection {
     size_t  len;
 } Selection;
 
+#define No_selection (Selection) {.source.text=NULL}
+
 Selection selection( Txt source, Txt pattern );
 Txt selection_text( Selection s );
 Txt before( Selection s );

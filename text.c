@@ -35,6 +35,9 @@ void on_text_file( c_Str name, Handlers handlers ) {
 }
 
 Selection selection( Txt src, Txt pattern ) {
+    if( src.len < pattern.len || pattern.len == 0 )
+        return No_selection;
+
     uint i = 0;
     for( ; i < src.len - pattern.len; i++ ) {
         if( strncmp( 
@@ -46,7 +49,7 @@ Selection selection( Txt src, Txt pattern ) {
             };
     }
 
-    return (Selection) {.source.text=NULL};
+    return No_selection;
 }
 
 Txt selection_text( Selection s ) {
