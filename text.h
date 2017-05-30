@@ -44,6 +44,8 @@ Txt selection_text( Selection s );
 Txt before( Selection s );
 Txt after( Selection s );
 
+Selection exp_to_line( Selection s );
+
 void with_subst( Selection s, Txt txt, Handlers actions );
 
 extern const char Doesnt_exist_text[];

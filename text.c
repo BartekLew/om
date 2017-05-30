@@ -87,6 +87,22 @@ Txt after( Selection s ) {
     };
 }
 
+Selection exp_to_line( Selection s ) {
+    while( s.start > 0 && s.source.text[s.start-1] != '\n' )
+        s.start--;
+
+    uint endpos = s.start + s.len;
+    uint lim = s.source.len;
+    while( endpos < lim && s.source.text[endpos+1] != '\n' )
+        endpos++;
+
+    return (Selection) {
+        .source = s.source,
+        .start = s.start,
+        .len = endpos - s.start + 1
+    };
+}
+
 void with_subst( Selection s, Txt txt, Handlers handlers ) {
     if( s.source.text == NULL )
         handlers.err(

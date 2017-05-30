@@ -10,6 +10,7 @@ const char *Test_files[N_Test_files] = { "test.c", "text.c", "text.h" };
 #define N_Non_existent_files 2
 const char *Non_existent_files[N_Non_existent_files] = { "foo.bar.baz", "bebe231232sczx" };
 
+bool fail = false;
 
 void compare( Txt txt, Ctx ctx ) {
     FILE *handle = fopen( ctx.file, "r" );
@@ -64,6 +65,7 @@ void shouldnt_exist( Txt input, Ctx ctx ) {
         printf( "om-test: assert fail: '%s' @ %s:%u.\n", \
             #CONDITION, __FILE__, __LINE__ \
         ); \
+        fail = true; \
     }
 
 #define assert_string( A, B ) \
@@ -72,16 +74,19 @@ void shouldnt_exist( Txt input, Ctx ctx ) {
         printf( "om-test: assert '%.*s' != '%.*s'.\n", \
                 (A).len, (A).text, (B).len, (B).text \
         ); \
+        fail = true; \
     }
 
 #define assert_source( SELECTION, TXT ) \
     if( (SELECTION).source.text == NULL \
         || (SELECTION).source.text < (TXT).text \
         || (SELECTION).source.text >= (TXT).text + (TXT).len \
-        || (SELECTION).source.text + (SELECTION).source.len > (TXT).text + (TXT).len ) \
+        || (SELECTION).source.text + (SELECTION).source.len > (TXT).text + (TXT).len ) { \
         printf( "om-test: assert source failed: %p/%u !~= %p/%u.\n", \
             (SELECTION).source.text, (SELECTION).source.len, (TXT).text, (TXT).len \
         ); \
+        fail = true; \
+    }
 
 
 Selection selection_test_case( Txt input, Txt pattern, bool found ) {
@@ -138,6 +143,18 @@ int main( void ) {
                      .err=&no_error,
                      .user_data =  &expected }
     );
+
+    input = _Txt( "Foo\nBar baz 000\nbazooo" );
+    s = exp_to_line(
+        selection( input, _Txt( "baz" ) )
+    );
+    assert_source( s, input );
+    assert_string( selection_text(s), _Txt( "Bar baz 000" ) );
+
+    if( fail ) {
+        printf( "\n" );
+        return 1;
+    }
 
     return 0;
 }
