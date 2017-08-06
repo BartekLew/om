@@ -71,8 +71,9 @@ void shouldnt_exist( Txt input, Ctx ctx ) {
 #define assert_string( A, B ) \
     if( (A).len != (B).len \
         || strncmp( (A).text, (B).text, (B).len ) != 0 ) { \
-        printf( "om-test: assert '%.*s' != '%.*s'.\n", \
-                (A).len, (A).text, (B).len, (B).text \
+        printf( "om-test: assert '%.*s' != '%.*s'. (line %d)\n", \
+                (A).len, (A).text, (B).len, (B).text, \
+                __LINE__\
         ); \
         fail = true; \
     }
@@ -145,11 +146,13 @@ int main( void ) {
     );
 
     input = _Txt( "Foo\nBar baz 000\nbazooo" );
-    s = exp_to_line(
-        selection( input, _Txt( "baz" ) )
-    );
+    s = line( input, 6 );
     assert_source( s, input );
     assert_string( selection_text(s), _Txt( "Bar baz 000" ) );
+
+    s = word( input, 5 );
+    assert_source( s, input );
+    assert_string( selection_text(s), _Txt( "Bar" ) );
 
     if( fail ) {
         printf( "\n" );

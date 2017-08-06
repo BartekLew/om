@@ -1,6 +1,9 @@
 #ifndef __HEADER_TEXT
 #define __HEADER_TEXT
 
+#include <stdbool.h>
+#include <ctype.h>
+
 typedef const char *c_Str;
 
 typedef struct text{
@@ -44,7 +47,8 @@ Txt selection_text( Selection s );
 Txt before( Selection s );
 Txt after( Selection s );
 
-Selection exp_to_line( Selection s );
+Selection line( Txt, uint pos );
+Selection word( Txt, uint pos );
 
 void with_subst( Selection s, Txt txt, Handlers actions );
 

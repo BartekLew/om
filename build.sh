@@ -1,6 +1,6 @@
 #!/bin/sh
 
-compile="gcc -g -Wall -pedantic -std=c11"
+compile="gcc -g -Wall -Wno-format -pedantic -std=c11"
 
 result='0'
 

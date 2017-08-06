@@ -87,20 +87,52 @@ Txt after( Selection s ) {
     };
 }
 
-Selection exp_to_line( Selection s ) {
-    while( s.start > 0 && s.source.text[s.start-1] != '\n' )
-        s.start--;
+#define rchar register char
 
-    uint endpos = s.start + s.len;
-    uint lim = s.source.len;
-    while( endpos < lim && s.source.text[endpos+1] != '\n' )
-        endpos++;
-
-    return (Selection) {
-        .source = s.source,
-        .start = s.start,
-        .len = endpos - s.start + 1
+Selection line( Txt txt, uint pos ) {
+    rchar c = txt.text[pos];
+    Selection w = (Selection) {
+        .source = txt, .start = pos
     };
+
+    if( c == '\n' ) return w;
+    w.len = 1;
+
+    for( uint i = pos+1; i < txt.len
+                         && txt.text[i] != '\n' ; i++ )
+        w.len++;
+
+    for( int i = pos-1; i >= 0
+                         && txt.text[i] != '\n' ; i-- ) {
+        w.start--;
+        w.len++;
+    }
+
+    return w;
+}
+
+Selection word( Txt txt, uint pos ) {
+    rchar c = txt.text[pos];
+    Selection w = (Selection) {
+        .source = txt, .start=pos
+    };
+
+    if( !isdigit(c) && !isalpha(c) ) return w;
+    w.len = 1;
+
+    for( uint i = pos+1; i < txt.len
+                         && ( isdigit( c=txt.text[i] )
+                           || isalpha(c) ) ; i++ )
+        w.len++;
+         
+    for( int i = pos-1; i >= 0
+                         && ( isdigit( c=txt.text[i] )
+                           || isalpha(c) ) ; i-- ) {
+        w.start--;
+        w.len++;
+    }
+
+    return w;
 }
 
 void with_subst( Selection s, Txt txt, Handlers handlers ) {
