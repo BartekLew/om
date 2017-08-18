@@ -1,5 +1,7 @@
 .text
 
+.comm buffer, 1048576, 32
+
 .globl _start
 
 _start:
@@ -19,7 +21,7 @@ _start:
     jng .usage
 
     movq %rax, %r10 #file descriptor for read
-    movq %rsp, %rsi #buffer for r/w, stat
+    movq $buffer, %rsi #buffer for r/w, stat
 
     movq %rax, %rdi #file descriptor
     movq $5, %rax   #fstat
@@ -29,8 +31,8 @@ _start:
     jnz  .usage
 
     movq 48(%rsi), %rdx #get open file size
-
-#TODO: This implementation is vulnerable to stack overflow
+    cmpq $1048576, %rdx #check max file size
+    jg   .too_big_file
 
     movq $0, %rax #read
     movq %r10, %rdi #file descritor
@@ -39,17 +41,106 @@ _start:
     cmpq $0, %rax
     jl .io_error
 
-    movq %rax, %rdx # length
-    movq $1, %rax # write
-    movq $1, %rdi # stdout
+    movq %rsi, %r8 # input buffer
+    movq %rdx, %r9 # input length
+
+    movq $3, %rax # close input
     syscall
 
+    movq $buffer, %rsi
+    addq %rdx, %rsi # place for pattern line
+
+    xorq %rax, %rax # read
+    movq $127, %rdx # buffer size
+    xorq %rdi, %rdi # stdin
+    syscall
+
+    cmpq $0, %rax
+    jle .io_error
+
+    subq $1, %rax # skip newline
+    movq %rax, %r10 # pattern length
+    xorq %rbx, %rbx # pattern cursor (relative)
+    movq %r8, %rdi # input cursor (absolute)
+    leaq (%r8, %r9), %r11 # end of input
+
+.search:
+    movb (%rdi, %rbx), %ah
+    cmpb (%rsi, %rbx), %ah
+    jne  .move_input
+
+    incq %rbx
+    cmpq %rbx, %r10
+    je   .print_offset
+    jmp  .search
+
+.move_input:
+    xorq %rbx, %rbx 
+    incq %rdi
+    leaq (%rdi, %r10), %rax
+    cmpq %r11, %rax
+    jge  .no_match
+    jmp  .search
+
+.no_match:
+    movq $1, %rax
+    jmp .quit
+
+.print_offset:
+    movq %rdi, %rbx
+    subq %r8, %rbx #match position
+    movq $10, %rcx
+    movq $10, %rax
+
+.pos_digits:
+    cmpq %rbx, %rax
+    jge   .store_digits
+    mulq %rcx
+    jmp .pos_digits
+
+
+.store_digits:
+    xorq %rdx, %rdx
+    divq %rcx
+    movq %rax, %rcx # divisor
+    movq %rbx, %rax # match position
+    xorq %rbx, %rbx
+    movq $10, %r15
+
+.sd_loop:
+    xorq %rdx, %rdx
+    divq %rcx
+    addq $0x30, %rax
+    movq %rax, (%rsi, %rbx)
+    subq $0x30, %rax
+    incq %rbx
+    cmpq $1, %rcx
+    je   .println
+    movq %rcx, %rax
+    movq %rdx, %rcx
+    xorq %rdx, %rdx
+    divq %r15
+    movq %rcx, %rdx
+    movq %rax, %rcx
+    movq %rdx, %rax
+    jmp  .sd_loop
+    
+.println:
+    movq $0xa, (%rsi, %rbx)
+    incq %rbx
+    movq $1, %rax
+    movq $1, %rdi
+    movq %rbx, %rdx
+    syscall
+        
     jmp .quit
 
 usage_msg:
     .ascii "USAGE: om file_name\n"
 io_error_msg:
-    .ascii "om: io/error\n"
+    .ascii "om: i/o error\n"
+tbf_msg:
+    .ascii "om: too big file (max=1048576)\n"
 
 .usage:
     movq $1, %rax #write
@@ -62,10 +153,17 @@ io_error_msg:
     jmp  .quit
 
 .io_error:
+    movq $io_error_msg, %rsi
+    movq $14, %rdx
+    jmp .print_error
+
+.too_big_file:
+    movq $tbf_msg, %rsi
+    movq $31, %rdx
+
+.print_error:
     movq $1, %rax
     movq $2, %rdi #stderr
-    movq $io_error_msg, %rsi
-    movq $12, %rdx
     syscall
 
     movq $2, %rax
