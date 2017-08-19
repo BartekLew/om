@@ -66,6 +66,8 @@ _start:
 
     #would be logical to use r11, but
     #write syscall change it some way...
+    #I'll use it to mark if pattern was found
+    movq $1, %r11
 
 .search:
     movb (%rdi, %rbx), %ah
@@ -86,7 +88,7 @@ _start:
     jmp  .search
 
 .no_match:
-    movq $1, %rax
+    movq %r11, %rax
     jmp .quit
 
 .print_offset:
@@ -139,6 +141,7 @@ _start:
     movq $1, %rdi
     movq %rbx, %rdx
     syscall
+    xorq %r11, %r11    #mark that pattern was found
         
     addq $20,  %rsp  #free space for position as string
     movq %r12, %rdi  #recall input cursor
