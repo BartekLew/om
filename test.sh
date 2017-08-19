@@ -9,6 +9,11 @@ echo "23" > $expected
 echo "foo" | ./om "$input" > "$test_out"
 diff "$expected" "$test_out"
 
+echo "foo, foo bar, foo bar baz" > "$input"
+echo -e "0\n5\n14" > "$expected"
+echo "foo" | ./om "$input" > "$test_out"
+diff "$expected" "$test_out"
+
 echo -n "" > "$expected"
 echo "" | ./om "$input" > "$test_out"
 diff "$expected" "$test_out"

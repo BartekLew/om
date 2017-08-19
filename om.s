@@ -62,7 +62,10 @@ _start:
     movq %rax, %r10 # pattern length
     xorq %rbx, %rbx # pattern cursor (relative)
     movq %r8, %rdi # input cursor (absolute)
-    leaq (%r8, %r9), %r11 # end of input
+    leaq (%r8, %r9), %r14 # end of input
+
+    #would be logical to use r11, but
+    #write syscall change it some way...
 
 .search:
     movb (%rdi, %rbx), %ah
@@ -78,7 +81,7 @@ _start:
     xorq %rbx, %rbx 
     incq %rdi
     leaq (%rdi, %r10), %rax
-    cmpq %r11, %rax
+    cmpq %r14, %rax
     jge  .no_match
     jmp  .search
 
@@ -87,13 +90,17 @@ _start:
     jmp .quit
 
 .print_offset:
-    movq %rdi, %rbx
-    subq %r8, %rbx #match position
+    movq %rdi, %r12 #remember input cursor
+    movq %rsi, %r13 #remember pattern buffer
+    subq $20, %rsp  #space for position as string
+    movq %rsp, %rsi
+
+    subq %r8, %rdi #match position
     movq $10, %rcx
     movq $10, %rax
 
 .pos_digits:
-    cmpq %rbx, %rax
+    cmpq %rdi, %rax
     jge   .store_digits
     mulq %rcx
     jmp .pos_digits
@@ -103,7 +110,7 @@ _start:
     xorq %rdx, %rdx
     divq %rcx
     movq %rax, %rcx # divisor
-    movq %rbx, %rax # match position
+    movq %rdi, %rax # match position
     xorq %rbx, %rbx
     movq $10, %r15
 
@@ -133,7 +140,12 @@ _start:
     movq %rbx, %rdx
     syscall
         
-    jmp .quit
+    addq $20,  %rsp  #free space for position as string
+    movq %r12, %rdi  #recall input cursor
+    addq %rdx, %rdi  #continue from the end of match
+    movq %r13, %rsi  #recall pattern buffer
+    xorq %rbx, %rbx  #pattern matching offset
+    jmp .search      #continue search
 
 usage_msg:
     .ascii "USAGE: om file_name\n"
