@@ -1,9 +1,11 @@
 .text
 
 .comm buffer, 1048576, 32
+.comm cmd_buff, 255, 32
 
 .globl _start
 .extern substr
+.extern get_stdin
 
 _start:
     popq %rcx
@@ -42,27 +44,50 @@ _start:
     cmpq $0, %rax
     jl .io_error
 
-    movq %rsi, %r8 # input buffer
-    leaq (%r8, %rax), %r9 # end of input
+    leaq (%rsi, %rax), %r8 # end of input
 
 
     movq $3, %rax # close input
     syscall
 
-    movq $buffer, %rsi
-    addq %rdx, %rsi # place for pattern line
+    movq $255,      %rdx # buffer size
+    movq $cmd_buff, %rsi
 
-    xorq %rax, %rax # read
-    movq $127, %rdx # buffer size
-    xorq %rdi, %rdi # stdin
-    syscall
+    movq $.in_to_cmd, %r12
+    movq $.io_error, %r13
+    jmp  get_stdin
 
-    cmpq $0, %rax
-    jle .io_error
+.in_to_cmd:
+    movq %rsi,         %rdi #stdin buffer
+    leaq (%rdi, %rax), %r9  #end of stdin buffer
+    movq $.nlstr,      %rsi #pattern to look for
+    movq $1,           %r10 #pattern length
+    xorq %rax,         %rax #start from beginning
+    
+    movq $.have_patten, %r12   #on success
+    movq $.patt_too_long, %r13 #on fail
+    jmp  substr
 
-    subq $1, %rax   # skip newline
-    movq %rax, %r10 # pattern length
-    movq %r8, %rdi  # input buffer
+.patt_too_long:
+    movq $2, %rax
+    jmp  .quit
+
+.no_patt:
+    movq $1, %rax
+    jmp  .quit
+
+.nlstr: .ascii "\n"
+
+.have_patten:
+    test %rax, %rax
+    jz   .no_patt
+
+    movq %rdi,    %r14 # where current pattern start
+    movq %r9,     %r15 # where all patterns loaded end
+    movq %rax,    %r10 # where this pattern end
+    movq %r8,     %r9
+    movq %rdi,    %rsi
+    movq $buffer, %rdi  # input buffer
     xorq %rax, %rax # start from beginning
 
     movq $.print_offset, %r12
@@ -75,7 +100,6 @@ _start:
 
 .print_offset:
     movq %rax, %r12 #remember match position
-    movq %rsi, %r13 #remember pattern buffer
     subq $20, %rsp  #space for position as string
     movq %rsp, %rsi
 
@@ -96,7 +120,7 @@ _start:
     movq %rax, %rcx # divisor
     movq %rdi, %rax # match position
     xorq %rbx, %rbx
-    movq $10, %r15
+    movq $10, %r11
 
 .sd_loop:
     xorq %rdx, %rdx
@@ -110,7 +134,7 @@ _start:
     movq %rcx, %rax
     movq %rdx, %rcx
     xorq %rdx, %rdx
-    divq %r15
+    divq %r11
     movq %rcx, %rdx
     movq %rax, %rcx
     movq %rdx, %rax
@@ -124,11 +148,11 @@ _start:
     movq %rbx, %rdx
     syscall
         
-    addq $20,  %rsp  #free space for position as string
-    movq %r8,  %rdi  #recall input buffer
-    movq %r12, %rax  #recall match position
-    addq %rdx, %rax  #continue from the end of match
-    movq %r13, %rsi  #recall pattern buffer
+    addq $20,  %rsp       #free space for position as string
+    movq $buffer,  %rdi   #recall input buffer
+    movq %r12, %rax       #recall match position
+    addq %rdx, %rax       #continue from the end of match
+    movq %r14, %rsi       #recall pattern buffer
 
     #set actions
     movq $.print_offset, %r12
@@ -136,6 +160,20 @@ _start:
     jmp substr      #continue search
 
 .match_fin:
+    addq $1,        %r10  #where next pattern could start
+    addq %r10,      %rsi
+    movq %r15,      %rax
+    subq %rsi,      %rax
+    jnz  .in_to_cmd
+
+    movq $255,      %rdx # buffer size
+    movq $cmd_buff, %rsi
+
+    movq $.in_to_cmd, %r12
+    movq $.job_done, %r13
+    jmp  get_stdin
+
+.job_done:
     xorq %rax, %rax
     jmp  .quit
 

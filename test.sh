@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 
 input="/tmp/input"
 test_out="/tmp/om_test_o"
@@ -31,5 +31,7 @@ test_case() {
 test_case "Hello World!\n Welcome foo world!" "22\n" "foo" 0
 test_case "foo, foo bar, foo bar baz" "0\n5\n14\n" "foo" 0
 test_case "foo bar baz" "" "" 1
+test_case "foo bar baz" "0\n8\n" "foo\nbaz" 0 
+test_case "whhez haalaaala" "0\n9\n13\n3\n" "whhe\nla\nez" 0
 
 rm "$input" "$test_out" "$expected" "$diff"
