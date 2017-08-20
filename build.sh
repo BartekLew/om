@@ -1,6 +1,7 @@
 #!/bin/sh
 
 as om.s -g -o om.o
-ld om.o -o om
+as text.s -g -o text.o
+ld om.o text.o -o om
 
 ./test.sh

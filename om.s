@@ -3,6 +3,7 @@
 .comm buffer, 1048576, 32
 
 .globl _start
+.extern substr
 
 _start:
     popq %rcx
@@ -42,7 +43,8 @@ _start:
     jl .io_error
 
     movq %rsi, %r8 # input buffer
-    movq %rdx, %r9 # input length
+    leaq (%r8, %rax), %r9 # end of input
+
 
     movq $3, %rax # close input
     syscall
@@ -58,46 +60,26 @@ _start:
     cmpq $0, %rax
     jle .io_error
 
-    subq $1, %rax # skip newline
+    subq $1, %rax   # skip newline
     movq %rax, %r10 # pattern length
-    xorq %rbx, %rbx # pattern cursor (relative)
-    movq %r8, %rdi # input cursor (absolute)
-    leaq (%r8, %r9), %r14 # end of input
+    movq %r8, %rdi  # input buffer
+    xorq %rax, %rax # start from beginning
 
-    #would be logical to use r11, but
-    #write syscall change it some way...
-    #I'll use it to mark if pattern was found
-    movq $1, %r11
-
-.search:
-    movb (%rdi, %rbx), %ah
-    cmpb (%rsi, %rbx), %ah
-    jne  .move_input
-
-    incq %rbx
-    cmpq %rbx, %r10
-    je   .print_offset
-    jmp  .search
-
-.move_input:
-    xorq %rbx, %rbx 
-    incq %rdi
-    leaq (%rdi, %r10), %rax
-    cmpq %r14, %rax
-    jge  .no_match
-    jmp  .search
+    movq $.print_offset, %r12
+    movq $.no_match, %r13
+    jmp  substr
 
 .no_match:
-    movq %r11, %rax
+    movq $1, %rax
     jmp .quit
 
 .print_offset:
-    movq %rdi, %r12 #remember input cursor
+    movq %rax, %r12 #remember match position
     movq %rsi, %r13 #remember pattern buffer
     subq $20, %rsp  #space for position as string
     movq %rsp, %rsi
 
-    subq %r8, %rdi #match position
+    movq %rax, %rdi #match position
     movq $10, %rcx
     movq $10, %rax
 
@@ -141,14 +123,21 @@ _start:
     movq $1, %rdi
     movq %rbx, %rdx
     syscall
-    xorq %r11, %r11    #mark that pattern was found
         
     addq $20,  %rsp  #free space for position as string
-    movq %r12, %rdi  #recall input cursor
-    addq %rdx, %rdi  #continue from the end of match
+    movq %r8,  %rdi  #recall input buffer
+    movq %r12, %rax  #recall match position
+    addq %rdx, %rax  #continue from the end of match
     movq %r13, %rsi  #recall pattern buffer
-    xorq %rbx, %rbx  #pattern matching offset
-    jmp .search      #continue search
+
+    #set actions
+    movq $.print_offset, %r12
+    movq $.match_fin, %r13
+    jmp substr      #continue search
+
+.match_fin:
+    xorq %rax, %rax
+    jmp  .quit
 
 usage_msg:
     .ascii "USAGE: om file_name\n"
