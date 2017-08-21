@@ -6,6 +6,7 @@
 .globl _start
 .extern substr
 .extern get_stdin
+.extern int_to_str
 
 _start:
     popq %rcx
@@ -99,47 +100,14 @@ _start:
     jmp .quit
 
 .print_offset:
-    movq %rax, %r12 #remember match position
-    subq $20, %rsp  #space for position as string
-    movq %rsp, %rsi
+    movq %rax, %r13 #remember match position
 
-    movq %rax, %rdi #match position
-    movq $10, %rcx
-    movq $10, %rax
+    movq %rax,      %rdi #match position
+    subq $21,       %rsp  #space for position as string
+    movq %rsp,      %rsi
+    movq $.println, %r12
+    jmp  int_to_str
 
-.pos_digits:
-    cmpq %rdi, %rax
-    jge   .store_digits
-    mulq %rcx
-    jmp .pos_digits
-
-
-.store_digits:
-    xorq %rdx, %rdx
-    divq %rcx
-    movq %rax, %rcx # divisor
-    movq %rdi, %rax # match position
-    xorq %rbx, %rbx
-    movq $10, %r11
-
-.sd_loop:
-    xorq %rdx, %rdx
-    divq %rcx
-    addq $0x30, %rax
-    movq %rax, (%rsi, %rbx)
-    subq $0x30, %rax
-    incq %rbx
-    cmpq $1, %rcx
-    je   .println
-    movq %rcx, %rax
-    movq %rdx, %rcx
-    xorq %rdx, %rdx
-    divq %r11
-    movq %rcx, %rdx
-    movq %rax, %rcx
-    movq %rdx, %rax
-    jmp  .sd_loop
-    
 .println:
     movq $0xa, (%rsi, %rbx)
     incq %rbx
@@ -148,9 +116,9 @@ _start:
     movq %rbx, %rdx
     syscall
         
-    addq $20,  %rsp       #free space for position as string
+    addq $21,  %rsp       #free space for position as string
     movq $buffer,  %rdi   #recall input buffer
-    movq %r12, %rax       #recall match position
+    movq %r13, %rax       #recall match position
     addq %rdx, %rax       #continue from the end of match
     movq %r14, %rsi       #recall pattern buffer
 

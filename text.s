@@ -1,5 +1,6 @@
 .globl substr
 .globl get_stdin
+.globl int_to_str
 
 # TODO what if rdi+rax=r9 or r10=0 ??
 
@@ -61,3 +62,52 @@ get_stdin:
 
 .no_stdin:
     jmpq *%r13
+
+# function substr end
+
+
+# convert int to string
+# input:  rdi = number to convert
+#         rsi = buffer to fill (20 bytes max)
+#         r12 = continuation
+# output: rbx = nuber of bytes used
+# rax, rcx, rdx, r11 changed undefined
+int_to_str:
+    movq $10, %rcx
+    movq $10, %rax
+
+.pos_digits:
+    cmpq %rdi, %rax
+    jge   .store_digits
+    mulq %rcx
+    jmp .pos_digits
+
+
+.store_digits:
+    xorq %rdx, %rdx
+    divq %rcx
+    movq %rax, %rcx # divisor
+    movq %rdi, %rax # match position
+    xorq %rbx, %rbx
+    movq $10, %r11
+
+.sd_loop:
+    xorq %rdx, %rdx
+    divq %rcx
+    addq $0x30, %rax
+    movq %rax, (%rsi, %rbx)
+    subq $0x30, %rax
+    incq %rbx
+    cmpq $1, %rcx
+    jne  .sd_more
+    jmpq *%r12
+
+.sd_more:
+    movq %rcx, %rax
+    movq %rdx, %rcx
+    xorq %rdx, %rdx
+    divq %r11
+    movq %rcx, %rdx
+    movq %rax, %rcx
+    movq %rdx, %rax
+    jmp  .sd_loop
