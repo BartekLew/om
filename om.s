@@ -13,37 +13,17 @@ _start:
     cmpq $2, %rcx   #one argument
     jne  .usage
 
-    addq $8, %rsp   #forget argv[0]
-
-    movq $2, %rax   #open
-    popq %rdi       #file name
-    xorq %rsi, %rsi #ro
-    xorq %rdx, %rdx #mode
-    syscall
-
-    cmp $2, %rax
-    jng .usage
+    open ro 8(%rsp) .usage
 
     movq %rax, %r10 #file descriptor for read
-    movq $buffer, %rsi #buffer for r/w, stat
-
-    movq %rax, %rdi #file descriptor
-    movq $5, %rax   #fstat
-    syscall
-
-    test %rax, %rax
-    jnz  .usage
+    
+    stat %rax $buffer .usage
 
     movq 48(%rsi), %rdx #get open file size
     cmpq $1048576, %rdx #check max file size
     jg   .too_big_file
 
-    movq $0, %rax #read
-    movq %r10, %rdi #file descritor
-    syscall
-
-    cmpq $0, %rax
-    jl .io_error
+    read %r10 %rsi %rdx .io_error
 
     leaq (%rsi, %rax), %r8 # end of input
 

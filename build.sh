@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
-as om.s -g -o om.o
-as text.s -g -o text.o
+awk -f asmp.awk om.s | as -g -o om.o -
+awk -f asmp.awk text.s | as -g -o text.o -
 
 ld om.o text.o -o om
 
