@@ -43,29 +43,6 @@ substr_loop:
 
 #function substr end
 
-# get text portion from stdion
-# input:  r12 = success action
-#         r13 = failure action
-# output: rax = bytes read
-#         rdx = buffer size
-#         rsi = buffer address
-#         rdi = 0
-get_stdin:
-    xorq %rax,      %rax # read
-    xorq %rdi,      %rdi # stdin
-    syscall
-
-    cmpq $0, %rax
-    jle .no_stdin
-    
-    jmpq *%r12
-
-.no_stdin:
-    jmpq *%r13
-
-# function substr end
-
-
 # convert int to string
 # input:  rdi = number to convert
 #         rsi = buffer to fill (20 bytes max)

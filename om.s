@@ -5,7 +5,6 @@
 
 .globl _start
 .extern substr
-.extern get_stdin
 .extern int_to_str
 
 _start:
@@ -13,30 +12,20 @@ _start:
     cmpq $2, %rcx   #one argument
     jne  .usage
 
-    open ro 8(%rsp) .usage
-
-    movq %rax, %r10 #file descriptor for read
-    
+    open ro   8(%rsp) .usage
     stat %rax $buffer .usage
 
     movq 48(%rsi), %rdx #get open file size
     cmpq $1048576, %rdx #check max file size
     jg   .too_big_file
 
-    read %r10 %rsi %rdx .io_error
+    read %rdi %rsi %rdx .io_error
 
     leaq (%rsi, %rax), %r8 # end of input
 
+    close %rdi
 
-    movq $3, %rax # close input
-    syscall
-
-    movq $255,      %rdx # buffer size
-    movq $cmd_buff, %rsi
-
-    movq $.in_to_cmd, %r12
-    movq $.io_error, %r13
-    jmp  get_stdin
+    read+ $0 $cmd_buff $255 .io_error
 
 .in_to_cmd:
     movq %rsi,         %rdi #stdin buffer
@@ -50,12 +39,10 @@ _start:
     jmp  substr
 
 .patt_too_long:
-    movq $2, %rax
-    jmp  .quit
+    quit 2
 
 .no_patt:
-    movq $1, %rax
-    jmp  .quit
+    quit 1
 
 .nlstr: .ascii "\n"
 
@@ -76,8 +63,7 @@ _start:
     jmp  substr
 
 .no_match:
-    movq $1, %rax
-    jmp .quit
+    quit 1
 
 .print_offset:
     movq %rax, %r13 #remember match position
@@ -91,10 +77,8 @@ _start:
 .println:
     movq $0xa, (%rsi, %rbx)
     incq %rbx
-    movq $1, %rax
-    movq $1, %rdi
-    movq %rbx, %rdx
-    syscall
+
+    write? $1 %rsi %rbx
         
     addq $21,  %rsp       #free space for position as string
     movq $buffer,  %rdi   #recall input buffer
@@ -114,16 +98,11 @@ _start:
     subq %rsi,      %rax
     jnz  .in_to_cmd
 
-    movq $255,      %rdx # buffer size
-    movq $cmd_buff, %rsi
-
-    movq $.in_to_cmd, %r12
-    movq $.job_done, %r13
-    jmp  get_stdin
+    read+ $0 $cmd_buff $255 .job_done
+    jmp  .in_to_cmd
 
 .job_done:
-    xorq %rax, %rax
-    jmp  .quit
+    quit 0
 
 usage_msg:
     .ascii "USAGE: om file_name\n"
@@ -133,32 +112,13 @@ tbf_msg:
     .ascii "om: too big file (max=1048576)\n"
 
 .usage:
-    movq $1, %rax #write
-    movq $1, %rdi #stdout
-    movq $usage_msg, %rsi
-    movq $20, %rdx
-    syscall
-
-    movq $1, %rax
-    jmp  .quit
+    write? $1 $usage_msg $20
+    quit   1
 
 .io_error:
-    movq $io_error_msg, %rsi
-    movq $14, %rdx
-    jmp .print_error
+    write? $2 $io_error_msg $14
+    quit   2
 
 .too_big_file:
     movq $tbf_msg, %rsi
     movq $31, %rdx
-
-.print_error:
-    movq $1, %rax
-    movq $2, %rdi #stderr
-    syscall
-
-    movq $2, %rax
-
-.quit:
-    movq %rax, %rdi #exit code for quit
-    movq $60, %rax #quit
-    syscall
