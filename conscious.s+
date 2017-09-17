@@ -1,0 +1,58 @@
+.text
+
+.globl conscious
+.extern substr
+.extern int_to_str
+
+conscious:
+    popq %rcx
+    
+    subq $8, %rsp
+    pipe %rsp
+
+    fork hexdump_pipe
+
+    close (%rsp)
+
+    write? $1 $message $13
+
+    int2str $conscious $_address
+    write? $1 %rsi %rbx
+
+    write? $1 $to $3
+    
+    int2str $bytes $_address
+    write? $1 %rsi %rbx
+
+    write? $1 $size $3
+
+    movq $bytes, %r9
+    subq $conscious, %r9
+    int2str %r9 $_address
+    write? $1 %rsi %rbx
+
+    write? $1 $bytes $6
+
+    write? 4(%rsp) $conscious %r9
+    close 4(%rsp)
+
+    quit 0
+
+hexdump_pipe:
+    close 4(%rsp)
+    cpfd  (%rsp) $0
+    
+    exec "/usr/bin/hexdump" "-C"
+
+#if failed exit 1
+    quit 1
+
+message:
+    .ascii "conscious at "
+    .comm _address, 20, 32
+to:
+    .ascii " - "
+size:
+    .ascii " : "
+bytes:
+    .ascii "bytes\n"

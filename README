@@ -1,0 +1,25 @@
+liberation – what if shell was a debugger?
+
+I have an impression that programming became way to messy.
+We have software in blob packages which limits using it very
+much. What if extracting functionality from software was
+easy? This project is trial to take of limits from software
+we use, give a way to analyse running code in a way that
+you can easly extract stuff you are interested in.
+
+Project is coded in x64 assembly for Linux. I feel most
+freedom with assembly, I hate limitations of high level
+languages, I love simplicity. C would be almost a good
+language, but it's too old, it doesn't let do a lot of stuff
+once nobody would think of (because limited resources and
+because only high level languages feed imagination). I have
+an impression that all languages have this features, because
+all of them stick to stuff invented decades ago so they rely
+on outdated ideas. Ah, and the speed. I love that assembler
+is so fast to compile and run.
+
+Of course coding in raw assembly would be a nightmare. No
+sane programmer would do that. That's why I generate code,
+which let's me keep assembly flavour with total
+predictability. Probably one day it will make yet another
+programming language.

@@ -46,7 +46,6 @@ substr_loop:
 # convert int to string
 # input:  rdi = number to convert
 #         rsi = buffer to fill (20 bytes max)
-#         r12 = continuation
 # output: rbx = nuber of bytes used
 # rax, rcx, rdx, r11 changed undefined
 int_to_str:
@@ -77,7 +76,7 @@ int_to_str:
     incq %rbx
     cmpq $1, %rcx
     jne  .sd_more
-    jmpq *%r12
+    ret
 
 .sd_more:
     movq %rcx, %rax

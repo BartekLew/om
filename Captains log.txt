@@ -1,0 +1,32 @@
+… First step was to explore a little bit. Come back to very
+basics. Find out address where code is located by OS and
+print it. Very soon I came to conclusion that I'm too lazy
+to do code it myself. In fact it would be agains a project
+purpose. I know a program that does this. It's hexdump.
+It's not so hard to call it. Piece of cake in fact. Few
+syscalls and we're done.
+Thanks to code generator (asmp) I coded in AWK. It's a
+prototype, so „brute force” solution like this is perfect :)
+With implementation of hexdump reuse it became a little bit
+more complicated beacuse it expect string literals in execve
+call so it has to store all static data definitions in
+separate files and paste it later.
+
+CLOSEST FUTURE:
+    * now string literals could apear in writes as well
+    * hexdump has one unpleasant feature – it prints only
+    when pipe is closed on another and. This means that if
+    I want to use it for dumping memory, I would have to
+    exec it for each time. This exec already takes a lot of
+    time (I can notice a delay!) so I probably have a new
+    direction. I wanna manipulate it so that I can run it
+    once, keep it connected via pipe and wait for data.
+    * I think that a step to achieve that is to start from
+    jumps and calls, how to detect them so that we have code
+    splited to some smaller parts that point where they call
+    causing something iteresting. Then we know what comes
+    in and what comes out. Next step is to find out what
+    happens in the middle and which parts are just a piece
+    of junk. ;)
+    * Oh, and probably loading file in another way than exec
+    probably mmap().

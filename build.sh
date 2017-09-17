@@ -1,12 +1,19 @@
 #!/bin/sh -e
 
 asmp() {
-    awk -f asmp/asmp.awk $@
+    awk -f asmp.awk $@
+    cat /tmp/asmp.tmp
 }
 
-asmp om.s | as -g -o om.o -
-asmp text.s | as -g -o text.o -
+compile() {
+    name=${1%%.s+}
+    asmp $1 > "o/$name.s"
+    as -g -o o/$name.o o/$name.s
+}
 
-ld om.o text.o -o om
+compile conscious.s+
+as -g -o o/text.o text.s
 
-./test.sh
+ld o/conscious.o o/text.o -entry conscious -o conscious
+
+./conscious
