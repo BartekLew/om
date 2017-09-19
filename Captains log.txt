@@ -13,7 +13,7 @@ call so it has to store all static data definitions in
 separate files and paste it later.
 
 CLOSEST FUTURE:
-    * now string literals could apear in writes as well
+    * now string literals could apear in writes as well //done
     * hexdump has one unpleasant feature – it prints only
     when pipe is closed on another and. This means that if
     I want to use it for dumping memory, I would have to

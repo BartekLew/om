@@ -14,24 +14,24 @@ conscious:
 
     close (%rsp)
 
-    write? $1 $message $13
+    write? $1 "conscious at "
 
     int2str $conscious $_address
     write? $1 %rsi %rbx
 
-    write? $1 $to $3
+    write? $1 " - "
     
-    int2str $bytes $_address
+    int2str $end_code $_address
     write? $1 %rsi %rbx
 
-    write? $1 $size $3
+    write? $1 " : "
 
-    movq $bytes, %r9
+    movq $end_code, %r9
     subq $conscious, %r9
     int2str %r9 $_address
     write? $1 %rsi %rbx
 
-    write? $1 $bytes $6
+    write? $1 "bytes\n"
 
     write? 4(%rsp) $conscious %r9
     close 4(%rsp)
@@ -47,12 +47,7 @@ hexdump_pipe:
 #if failed exit 1
     quit 1
 
-message:
-    .ascii "conscious at "
+end_code:
+    nop
+
     .comm _address, 20, 32
-to:
-    .ascii " - "
-size:
-    .ascii " : "
-bytes:
-    .ascii "bytes\n"

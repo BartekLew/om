@@ -121,8 +121,29 @@ function result( destination ) {
 /^\s*write\??\s/ {
     put( "#" $0 );
     par( $2, "file descriptor", "%rdi" );
-    par( $3, "write buffer", "%rsi" );
-    par( $4, "write length", "%rdx" );
+
+    if( substr( $3, 1, 1 ) == "\"" ) {
+        str_start = index( $0, $3 ) + 1;
+        rest=substr($0, str_start);
+        string=substr(rest,1, index(rest, "\"") - 1);
+
+        escapes = 0;
+        remaining = string;
+        while( ( pos = match( remaining, /\\/ ) ) > 0 ) {
+            escapes++;
+            remaining = substr( remaining, pos+1 );
+        }
+
+        label = "str_" NR;
+        print label ": .ascii \"" string "\"" > "/tmp/asmp.tmp"
+        put( "movq $" label ", %rsi" );
+        put( "movq $" length(string) - escapes ", %rdx" );
+    }
+    else {
+        par( $3, "write buffer", "%rsi" );
+        par( $4, "write length", "%rdx" );
+    }
+
     syscall( 1 );
     if( $1 == "write" )
         action( $5, "write error", jne, $4 );
