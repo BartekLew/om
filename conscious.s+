@@ -37,6 +37,7 @@ awk2gdb:
 
 echo:
     write? $1 -90(%rsp) %r8
+    write? 4(%rsp) "stepi\n"
     jmp awk2gdb
 
 no_entry:

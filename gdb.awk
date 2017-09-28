@@ -13,7 +13,6 @@
 /0x[[:xdigit:]]+ in/ {
     gsub( /^.*0x/, "0x" );
     print "x/i " $1;
-    print "stepi";
     system("");
 }
 
