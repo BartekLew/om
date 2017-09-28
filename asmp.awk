@@ -15,6 +15,19 @@ function check_par( val, name ) {
         warn( "missing parameter " name );
 }
 
+function par_addr( val, name, register ) {
+    check_par( val, name );
+
+    if( val != register ) {
+        if( val ~ /\(.+\)/ ) 
+            put( "leaq " val ", " register );
+        else if( val == "$0" )
+            put( "xorq " val ", " val );
+        else
+            put( "movq " val ", " register );
+    }
+}
+
 function par( val, name, register ) {
     check_par( val, name );
 
@@ -56,8 +69,23 @@ function result( destination ) {
         put( "movq %rax, " destination );
 }
 
+function get_quote( string, idx ) {
+    if( substr( string, idx, 1 ) == "\"" ) {
+        start = idx + 1;
+        rest = substr( string, start );
+        quot = match( rest, /[^\\]"/ );
+        if( quot <= 0 ) {
+            warn( "quote mismatch" );
+            return "";
+        }
+        return substr( rest, 1, quot );
+    }
+
+    return "";
+}
+
 /^\s*open\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     switch( $2 ) {
         case "ro":
             put( "xorq %rsi, %rsi # ro" );
@@ -80,14 +108,14 @@ function result( destination ) {
 }
 
 /^\s*close\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     par( $2, "file descriptor", "%rdi" );
     syscall( 3 );
     next;
 }
 
 /^\s*stat\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     par( $2, "file descriptor", "%rdi" );
     par( $3, "stat buffer", "%rsi" );
     syscall( 5 );
@@ -97,9 +125,9 @@ function result( destination ) {
 }
 
 /^\s*read\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     par( $2, "file descriptor", "%rdi" );
-    par( $3, "read buffer", "%rsi" );
+    par_addr( $3, "read buffer", "%rsi");
     par( $4, "buffer size", "%rdx" );
     syscall( 0 );
     action( $5, "read error", "jl", "$0" );
@@ -108,9 +136,9 @@ function result( destination ) {
 }
 
 /^\s*read\+\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     par( $2, "file descriptor", "%rdi" );
-    par( $3, "read buffer", "%rsi" );
+    par_addr( $3, "read buffer", "%rsi" );
     par( $4, "buffer size", "%rdx" );
     syscall( 0 );
     action( $5, "read error", "jle", "$0" );
@@ -119,28 +147,25 @@ function result( destination ) {
 }
 
 /^\s*write\??\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     par( $2, "file descriptor", "%rdi" );
 
-    if( substr( $3, 1, 1 ) == "\"" ) {
-        str_start = index( $0, $3 ) + 1;
-        rest=substr($0, str_start);
-        string=substr(rest,1, index(rest, "\"") - 1);
-
+    quoted = get_quote( $0, index( $0, $3 ));
+    if( length( quoted ) > 0 ) {
         escapes = 0;
-        remaining = string;
+        remaining = quoted;
         while( ( pos = match( remaining, /\\/ ) ) > 0 ) {
             escapes++;
             remaining = substr( remaining, pos+1 );
         }
 
         label = "str_" NR;
-        print label ": .ascii \"" string "\"" > "/tmp/asmp.tmp"
+        print label ": .ascii \"" quoted "\"" > "/tmp/asmp.tmp"
         put( "movq $" label ", %rsi" );
-        put( "movq $" length(string) - escapes ", %rdx" );
+        put( "movq $" length(quoted) - escapes ", %rdx" );
     }
     else {
-        par( $3, "write buffer", "%rsi" );
+        par_addr( $3, "write buffer", "%rsi" );
         par( $4, "write length", "%rdx" );
     }
 
@@ -152,27 +177,28 @@ function result( destination ) {
 }
 
 /^\s*pipe\s/ {
-    put( "#" $0 );
-    par( $2, "pipe descriptors int[2]", "%rdi" );
+    put( "#" NR ": " $0 );
+    check_par( $2, "pipe descriptors int[2]" );
+    put( "leaq " $2 ", %rdi" );
     syscall( 22 );
     
     next;
 }
 
 /^\s*fork\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
 
     check_par( $2, "child code entry" );
     syscall( 57 );
 
-    put( "cmpq $0, %rax" );
-    put( "jg " $2 "\n" );
+    put( "test %rax, %rax" );
+    put( "jz " $2 "\n" );
 
     next;
 }
     
 /^\s*cpfd\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     par( $2, "descriptor to copy", "%rdi" );
     par( $3, "copy to descriptor no.", "%rsi" );
     syscall( 33 );
@@ -181,21 +207,59 @@ function result( destination ) {
 }
 
 /^\s*exec\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     check_par( $2, "program to execute" );
 
-    par_offset = NF * 8;
-    for( i = 2; i <= NF ; i++ ) {
+    remaining = substr( $0, index( $0, $2 ) );
+    arg_c = 0;
+    while( 1 ){
+        quot = get_quote( remaining, 1 );
+        if( length( quot ) > 0 ) {
+            arg_c++;
+            
+            label = "exec_" NR "_" arg_c;
+            print label ": .asciz \"" quot "\"" > "/tmp/asmp.tmp"
+    
+            remaining = substr(remaining, length(quot) + 3);
+            remaining = substr(remaining, match( remaining, /[^[:space:]]/ ) );
+
+            continue
+        }
+        if( substr( remaining, 1, 1 ) == "&" ) {
+            arg_c++;
+
+            name_end = match( remaining, /[[:space:]]/ );
+            src = substr( remaining, 2, name_end - 2 );
+
+            label = "exec_" NR "_" arg_c;
+            printf label ": .asciz \"" > "/tmp/asmp.tmp"
+            while( (getline line < src ) > 0 ) {
+                gsub( /"/, "\\\"", line );
+                printf line "\\n" > "/tmp/asmp.tmp"
+            }
+            print "\"" > "/tmp/asmp.tmp"
+
+            remaining = substr( remaining, name_end );
+            remaining = substr(remaining, match( remaining, /[^[:space:]]/ ) );
+
+            continue
+        }
+        else break;
+
+    }
+
+    par_offset = (arg_c+1) * 8;
+    for( i = 1; i <= arg_c; i++ ) {
         label = "exec_" NR "_" i;
-        print label ":\n    .asciz " $i > "/tmp/asmp.tmp"
         put( "movq $" label ", -" par_offset "(%rsp)" );
         par_offset -= 8;
     }
-    put( "movq $0, -" par_offset " (%rsp)" );
 
-    put( "movq $exec_" NR "_2, %rdi" );
-    put( "leaq -" NF*8 "(%rsp), %rsi" );
-    put( "leaq -" par_offset "(%rsi), %rdx" );
+    put( "movq $0, -" par_offset "(%rsp)" );
+
+    put( "movq $exec_" NR "_1, %rdi" );
+    put( "leaq -" (arg_c+1)*8 "(%rsp), %rsi" );
+    put( "leaq -" par_offset "(%rsp), %rdx" );
     syscall( 59 );
 
     next;
@@ -203,7 +267,7 @@ function result( destination ) {
 
 
 /^\s*int2str\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     par( $2, "number to convert", "%rdi" );
     par( $3, "buffer", "%rsi" );
     put( "call int_to_str\n" );
@@ -211,7 +275,7 @@ function result( destination ) {
 }
 
 /^\s*quit\s/ {
-    put( "#" $0 );
+    put( "#" NR ": " $0 );
     if( length( $2 ) == 0 || $2 == 0 ) 
         put( "xorq %rdi, %rdi" );
     else

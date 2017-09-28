@@ -1,8 +1,123 @@
-… First step was to explore a little bit. Come back to very
+So, I'm almost there! I've succeeded to print all instructions
+were going on in hexdump, but still  it sometimes work,
+sometimes not. Some strange is going on, I need to debug.
+However the idea seems to be good.
+
+******************** 00003 *******************************
+Script for getting all calls during execution is stored in
+prototype/watch_calls.sh . I've seen lots of calls before
+i/o witch realy interest me. Then I see a loop of fread and
+many printfs. It looks like each fread reads one portion for
+one line of output - 16 bytes. So, I'm going to break on
+freads and printfs to get better picture what happens there.
+
+When I set a breakpoint I have found out that there are many
+more prints because each space between elements are made
+with separate printf. Anyway %rdi contains format and %rdx
+contain value. I haven't seen more sophisticated prints.
+Unfortunately I don't know how to automate gdb so that it
+prints memory from address specified in register. I would
+have to write another piece of code so that I get pretty
+output.
+
+However for now more interesting is what happens between
+those calls. Specify which code would I cut so that I get
+only this piece of functionality. There are two ways. Lead
+gdb instruction by instruction printing every instruction,
+or disassemble biggrer portions of code looking for all jumps.
+First seems easier.
+
+So I need to run gdb and pipe to it. It's output come back
+to master so that it rip some data of it or print it. I
+would also call awk or something like this for every scanning
+action I'd need. What master would do is hardly more than
+redirecting data between pipes and stdout. :-)
+
+******************** 00002 *******************************
+Finding calls in machine code is quite unpleasant task, at
+least on x64 architecture with highly variable intruction
+size. One could of course find them out, but again, why 
+would I do it if I have at least 2 programs that can do it:
+gdb and objdump?. Gdb is slightly harder to use, but much
+more powerfull as well and as it's command line tool, it
+can be quite easly used. To determine where input data comes
+in I needed to determine text section boundaries:
+
+$ gdb /usr/bin/hexdump
+(gdb) info files
+[..]
+    Entry point: 0x401d10
+[..]
+    0x0000000000401bd0 - 0x0000000000408049 is .text
+[..]
+
+in disassembly I get function name for each external call.
+Of course there are many calls in this code so I quit gdb
+and called it so that I can grep the output.
+
+$ echo 'disassemble 0x401bd0, 0x408049' | gdb /usr/bin/hexdump | grep call
+
+or guessing to grep for read, which gave few results:
+
+   0x00000000004024c8:  callq  0x401830 <fread@plt>
+   0x0000000000406c5b:  callq  0x401ab0 <readdir@plt>
+
+So, the only thing remaining to do is to set the breakpoint
+and check what happens.
+
+(gdb) disassemble 0x00000000004024b0, 0x00000000004024f0
+Dump of assembler code from 0x4024b0 to 0x4024f0:
+0x00000000004024b0:  cmp    %eax,%ebx
+0x00000000004024b2:  cmovle %rbx,%rax
+0x00000000004024b6:  mov    %rax,%rdx
+0x00000000004024b9:  mov    %rbp,%rdi
+0x00000000004024bc:  add    0x208e1d(%rip),%rdi        # 0x60b2e0
+0x00000000004024c3:  mov    $0x1,%esi
+0x00000000004024c8:  callq  0x401830 <fread@plt>
+0x00000000004024cd:  test   %rax,%rax
+0x00000000004024d0:  je     0x40275a
+0x00000000004024d6:  mov    0x20(%r12),%rdx
+0x00000000004024db:  movl   $0x0,0x208d93(%rip)        # 0x60b278
+0x00000000004024e5:  cmp    $0xffffffffffffffff,%rdx
+0x00000000004024e9:  je     0x4024f3
+0x00000000004024eb:  sub    %rax,%rdx
+0x00000000004024ee:  mov    %rdx,0x20(%r12)
+End of assembler dump.
+(gdb) break *0x00000000004024c8
+Breakpoint 1 at 0x4024c8
+(gdb) break *0x00000000004024cd
+Breakpoint 2 at 0x4024cd
+(gdb) continue 
+Continuing.
+
+Yoo hoo!! It stoped, so it's probably the place. So I type
+some text and check registers, rax should contain number of
+bytes read and rdi address of the buffer:
+
+foo bar baz
+<ctrl-d>
+
+Breakpoint 2, 0x00000000004024cd in ?? ()
+(gdb) info registers rax rdi
+    rax            0x4  4
+    rdi            0x60d4f0 6345968
+(gdb) x/s 0x60d4f0
+    0x60d4f0:   "foo\n"
+
+So now we know where the input comes in. So let's try to find
+out whre output goes out. Well, there are many prints and 
+one fwrite, so what shall I do. I think that the best way
+is to automaticaly detect all external calls in the code,
+set breakpoints on them and see it.
+
+
+******************** 00001 *******************************
+
+First step was to explore a little bit. Come back to very
 basics. Find out address where code is located by OS and
 print it. Very soon I came to conclusion that I'm too lazy
 to do code it myself. In fact it would be agains a project
-purpose. I know a program that does this. It's hexdump.
+purpose. I know a pprogram that does this. It's hexdump.
 It's not so hard to call it. Piece of cake in fact. Few
 syscalls and we're done.
 Thanks to code generator (asmp) I coded in AWK. It's a

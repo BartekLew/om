@@ -5,49 +5,64 @@
 .extern int_to_str
 
 conscious:
-    popq %rcx
-    
-    subq $8, %rsp
-    pipe %rsp
+    subq $24, %rsp
+    #pipe: conscious->gdb
+    pipe (%rsp)
 
-    fork hexdump_pipe
+    #pipe: gdb->awk
+    pipe 8(%rsp)
+
+    #pipe: awk->conscious
+    pipe 16(%rsp)
+    
+    fork run_gdb
+    fork run_awk
 
     close (%rsp)
-
-    write? $1 "conscious at "
-
-    int2str $conscious $_address
-    write? $1 %rsi %rbx
-
-    write? $1 " - "
+    close 8(%rsp)
+    close 12(%rsp)
+    close 20(%rsp)
     
-    int2str $end_code $_address
-    write? $1 %rsi %rbx
+    write? 4(%rsp) "info files\n"
 
-    write? $1 " : "
+awk2gdb:
+    read+ 16(%rsp) -90(%rsp) $80 no_entry
+    movq  %rax, %r8
 
-    movq $end_code, %r9
-    subq $conscious, %r9
-    int2str %r9 $_address
-    write? $1 %rsi %rbx
+    cmpb $'=, -90(%rsp)
+    je  echo
 
-    write? $1 "bytes\n"
+    write? 4(%rsp) -90(%rsp) %r8
+    jmp awk2gdb
 
-    write? 4(%rsp) $conscious %r9
-    close 4(%rsp)
+echo:
+    write? $1 -90(%rsp) %r8
+    jmp awk2gdb
 
+no_entry:
+    write? $2 "-- End of input --"
     quit 0
 
-hexdump_pipe:
-    close 4(%rsp)
-    cpfd  (%rsp) $0
-    
-    exec "/usr/bin/hexdump" "-C"
 
-#if failed exit 1
+run_gdb:
+    cpfd  (%rsp)   $0
+    close 4(%rsp)
+    close 8(%rsp)
+    cpfd  12(%rsp) $1
+    close 16(%rsp)
+    close 20(%rsp)
+
+    exec "/usr/bin/gdb" "/usr/bin/hexdump"
     quit 1
 
-end_code:
-    nop
+run_awk:
+    close (%rsp)
+    close 4(%rsp)
+    cpfd  8(%rsp)  $0
+    close 12(%rsp)
+    close 16(%rsp)
+    cpfd  20(%rsp) $1
 
-    .comm _address, 20, 32
+    exec "/usr/bin/awk" &gdb.awk 
+    quit 1
+
