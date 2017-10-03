@@ -1,0 +1,17 @@
+fork gdb "/usr/bin/gdb" $2
+read_prompt "(gdb) "
+
+read gdb
+write gdb "info files\n"
+
+read gdb
+write $1 %rsi %rax
+quit 0
+
+wrong_argv:
+write $2 "wrong parameters number\n"
+quit 1
+
+read_buffer_too_small:
+write $2 "read waited for prompt, but buffer was too small: 8192bytes\n"
+quit 1

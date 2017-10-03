@@ -1,6 +1,10 @@
 #!/bin/sh
 
-program="/usr/bin/hexdump"
+if [[ -n "$1" ]]; then
+    program=$1
+else
+    program="/usr/bin/hexdump"
+fi
 commands="/tmp/wc.gdb"
 
 run() {

@@ -1,3 +1,49 @@
+What the hell I'm doing. So big change at one time. But once
+started this refactor I must have finished that. By the way
+not everything that worked still works (printing all
+instructions observed on gdb), but now I have little more
+solid foundation. Thanks to read_prompt command I can make
+read accumulate input as long as it spots defined prompt in
+the end!). I believe that very chaotaic in fact reads and
+writes was making gdb mad. I hope now, it's gonna work more
+stable. Oh, and the source code is becoming more and more
+high level. It still needs to be aware of assembly code a
+little bit, but it's much easier to code. Effective assembly
+code needs some work too, but I like it anyway. :-) Now I
+have code that is readable and easy to understand and reason
+about.
+
+Now I wanna finish refactor so that I can print all
+instructions. I think I'm closer and closer to making my
+language really high level. But it might be just an impression.
+
+******************** 00006 ********************************
+
+Man, gdb can print and examine memory with values of registers,
+but you must use dollar instead of persent so…
+    print $rax
+    x/i $rip
+etc. Very unintuitive, I rather tried %rax, like in GAS
+syntax. And eventualy I think why I was so much thinking
+what to do and it looks so hard. The truth is that I have
+working prototype, I needed it improved a little bit, I need
+to implement interaction between processes lunched which is
+not obvious thing to do in bash. Turns out, quite quick to
+do in assembler.
+
+******************** 00005 *******************************
+
+After dealing with small race condition (sending stepi after
+reading response for command before), program still seems
+to work inpredictably. After looking at log with all
+commands I've decided that dealing with awk after gdb is
+not needed, it's to general and too impredictable. Much
+easier will be to see that in fact we have only few messages
+we can get in very predictable manner. It might be better to
+make brute force and the most important thing I forgot:
+PROMPT! follow the prompt, man! That's gonna be first thing.
+
+******************** 00004 *******************************
 So, I'm almost there! I've succeeded to print all instructions
 were going on in hexdump, but still  it sometimes work,
 sometimes not. Some strange is going on, I need to debug.

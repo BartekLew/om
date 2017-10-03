@@ -1,19 +1,17 @@
 #!/bin/sh -e
 
-asmp() {
-    awk -f asmp.awk $@
-    cat /tmp/asmp.tmp
+preprocess() {
+    awk -f liberation.awk $@
 }
 
 compile() {
     name=${1%%.s+}
-    asmp $1 > "o/$name.s"
+    preprocess $1 > "o/$name.s"
     as -g -o o/$name.o o/$name.s
 }
 
-compile conscious.s+
-as -g -o o/text.o text.s
+compile liberation.s+
 
-ld o/conscious.o o/text.o -entry conscious -o conscious
+ld o/liberation.o -o liberation
 
-./conscious
+./liberation /usr/bin/hexdump
